@@ -12,10 +12,10 @@ import dkwakkel.jgcode.GCodeParser.Machine;
 public class HelloWorldGcode {
 	
 	public static void main(String[] args) throws Throwable {
-		InputStream gcodeStream = HelloWorldGcode.class.getResourceAsStream("helloworld.gcode");
-
-		Machine machine = new EV3Machine();
-		GCodeParser.execute(wrapWithProxy(machine), gcodeStream);
+		try(InputStream gcodeStream = HelloWorldGcode.class.getResourceAsStream("helloworld.gcode")) {
+			Machine machine = null; // new EV3Machine();
+			GCodeParser.execute(wrapWithProxy(machine), gcodeStream);
+		}
 	}
 
 	private static Machine wrapWithProxy(Machine machine)

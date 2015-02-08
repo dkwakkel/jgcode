@@ -22,12 +22,10 @@ import dkwakkel.jgcode.GCodeParser.CANON_PLANE;
 import dkwakkel.jgcode.GCodeParser.CANON_UNITS;
 
 public class EV3Machine implements GCodeParser.Machine {
-
 	private CANON_PLANE plane = CANON_PLANE.CANON_PLANE_XY;
 	private CANON_FEED_REFERENCE reference;
 	private CANON_MOTION_MODE mode;
 	
-	private String comment;
 	private double feedRateInUnitPerMinute;
 
 	enum Axis { X(Motor.A), Y(Motor.B), Z(Motor.C), A, B, C;
@@ -102,7 +100,6 @@ public class EV3Machine implements GCodeParser.Machine {
 		Axis.C.origin = c;
 
 		// TODO: move to correct place
-		LCD.clear();
 		COMMENT("Move the mill to its startpoint and press <OK>");
 		KeyListener listener = new KeyListener() {
 			
@@ -297,8 +294,8 @@ public class EV3Machine implements GCodeParser.Machine {
 
 	@Override
 	public void COMMENT(String s) {
-		comment = s;
-		LCD.drawString(comment, 0, 5);
+		LCD.drawString(s, 0, 5);
+		LCD.scroll();
 	}
 
 	@Override

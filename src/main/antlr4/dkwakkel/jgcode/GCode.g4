@@ -8,6 +8,7 @@ options {
 
 @header {
 package dkwakkel.jgcode;
+import static java.lang.StrictMath.*;
 }
 
 @parser::members {
@@ -129,16 +130,17 @@ program		: PERCENT END_OF_LINE ( line )* PERCENT END_OF_LINE | ( line )* ;
 
 line		: ( BLOCK_DELETE )? ( LINE_NUMBER )? ( segment )* endOfLine ;
 
-LINE_NUMBER	: 'n' Digit Digit? Digit? Digit? Digit?;
-segment		: word | parameterSetting | comment | oword_label oword_statement ;
+segment		: word | parameterSetting | comment { machine.COMMENT($comment.text); } | oword_label oword_statement ;
 
-parameterSetting	: parameter EQUALS e ;
+comment		: BRACKET_COMMENT | LINE_COMMENT; // TODO: return message without brackets
 
-parameter		: HASH designator ;
+parameterSetting : parameter EQUALS e ;
 
-designator		: NUMBER |NAME | parameter | LBRACKET e RBRACKET ;
+parameter	: HASH designator ;
 
-oword_label		: 'o' NUMBER | 'o' NAME | 'o' parameter ;
+designator	: NUMBER |NAME | parameter | LBRACKET e RBRACKET ;
+
+oword_label	: 'o' NUMBER | 'o' NAME | 'o' parameter ;
 
 oword_statement
 	:  SUB
@@ -161,8 +163,6 @@ oword_statement
 parameterList	: bracketExpression*;
 
 optReturnValue	: bracketExpression | ;
-
-comment			: BRACKET_COMMENT | LINE_COMMENT;
 
 word	: axisWord | dimensionWord | gWord | WordLetter e;
 gWord	: group1 | group6;
@@ -301,34 +301,44 @@ aggregateExpression
 					( MOD powerExpression )
 				)* ;
 
-powerExpression	: unaryExpression ( POWER powerExpression )? ;
+// If operations are strung together (for example in the expression [2.0 / 3 * 1.5 - 5.5 / 11.0]),
+// operations in the first group are to be performed before operations in the second group
+// and operations in the second group before operations in the third group.
+// If an expression contains more than one operation from the same group
+// (such as the first / and * in the example), the operation on the left is performed first.
 
+powerExpression	returns [double v]:
+	unaryExpression ( POWER powerExpression )?
+	{ if($powerExpression.ctx==null) { $v = $unaryExpression.v; } else { $v = pow($unaryExpression.v, $powerExpression.v); }};
 
-unaryExpression	: ACOS bracketExpression
-				| ASIN bracketExpression
-				| COS bracketExpression
-				| SIN bracketExpression
-				| TAN bracketExpression
-				| LN bracketExpression
-				| EXP bracketExpression
-				| SQRT bracketExpression
-				| FIX bracketExpression
-				| FUP bracketExpression
-				| ROUND bracketExpression
-				| ABS bracketExpression
-				| EXISTS bracketExpression
-				| ATAN bracketExpression SLASH bracketExpression
-				| parameter
-				| primitiveExpression
-				;
+unaryExpression returns [double v]:
+// TODO: fix and are these all mathematical functions?
+	ACOS bracketExpression		{ $v = cos($bracketExpression.v);}
+	| ASIN bracketExpression	{ $v = asin($bracketExpression.v);}
+	| COS bracketExpression		{ $v = cos($bracketExpression.v);}
+	| SIN bracketExpression		{ $v = sin($bracketExpression.v);}
+	| TAN bracketExpression		{ $v = tan($bracketExpression.v);}
+	| LN bracketExpression		
+	| EXP bracketExpression		{ $v = exp($bracketExpression.v);}
+	| SQRT bracketExpression	{ $v = pow($bracketExpression.v,0.5);}
+	| FIX bracketExpression		{ $v = floor($bracketExpression.v);}
+	| FUP bracketExpression		{ $v = ceil($bracketExpression.v);}
+	| ROUND bracketExpression	{ $v = cos($bracketExpression.v);}
+	| ABS bracketExpression		{ $v = abs($bracketExpression.v);}
+	| EXISTS bracketExpression	
+	| ATAN bracketExpression SLASH bracketExpression
+	| parameter
+	| primitiveExpression
+;
 
-bracketExpression	:	LBRACKET e RBRACKET ;
+bracketExpression returns [double v]:	LBRACKET e RBRACKET;
 
-primitiveExpression : bracketExpression | parameter | NUMBER | '0'; // TODO: why NUMBER does not work for '0'?
-
-WHITESPACE	: ( ' ' | '\t' )+ -> skip ;
-
-END_OF_LINE	: ( '\r' | '\n' | '\r' '\n' );
+primitiveExpression returns [double v]:
+	bracketExpression { $v = $bracketExpression.v; }
+	| parameter
+	| NUMBER { $v = Double.valueOf($NUMBER.text); }
+	| '0' // TODO: why NUMBER does not work for '0'?
+; 
 
 endOfLine : END_OF_LINE {
 	switch(group1Value) {
@@ -358,23 +368,23 @@ endOfLine : END_OF_LINE {
 
 			int rotation;
 			double firstCenter, secondCenter;			
-			double adjacent = StrictMath.sqrt(StrictMath.pow(firstEnd-firstCurrent,2) + StrictMath.pow(secondEnd-secondCurrent, 2)) / 2;
+			double adjacent = sqrt(pow(firstEnd-firstCurrent,2) + pow(secondEnd-secondCurrent, 2)) / 2;
 			
 			if(radiusFormat) {
-				double r = StrictMath.abs(rValue);
-				double alpha = firstCurrent == firstEnd ? 0 : StrictMath.atan((secondEnd-secondCurrent)/(firstEnd-firstCurrent));
-				double beta = StrictMath.acos(adjacent / r);
+				double r = abs(rValue);
+				double alpha = firstCurrent == firstEnd ? 0 : atan((secondEnd-secondCurrent)/(firstEnd-firstCurrent));
+				double beta = acos(adjacent / r);
 				double firstMid = firstCurrent + (firstEnd - firstCurrent) / 2;
 				double secondMid = secondCurrent + (secondEnd - secondCurrent) / 2;
-				firstCenter = firstCurrent + r * StrictMath.cos(alpha + beta) * (rValue >= 0 ^ firstEnd >= firstCurrent ? -1 : 1);
-				secondCenter = secondCurrent + r * StrictMath.sin(alpha + beta) * (rValue >= 0 ^ secondEnd >= secondCurrent ? 1 : -1);
-				rotation = (int)StrictMath.floor(StrictMath.toDegrees((Math.PI / 2.0) - beta));
+				firstCenter = firstCurrent + r * cos(alpha + beta) * (rValue >= 0 ^ firstEnd >= firstCurrent ? -1 : 1);
+				secondCenter = secondCurrent + r * sin(alpha + beta) * (rValue >= 0 ^ secondEnd >= secondCurrent ? 1 : -1);
+				rotation = (int)floor(toDegrees((Math.PI / 2.0) - beta));
 			} else {
 				firstCenter = firstCurrent + firstDelta;
 				secondCenter = secondCurrent + secondDelta;
 
-				double hypotenuse = StrictMath.sqrt(StrictMath.pow(firstEnd-firstCenter,2) + StrictMath.pow(secondEnd-secondCenter, 2));
-				rotation = (int)(2 * StrictMath.toDegrees(StrictMath.acos(adjacent / hypotenuse)));
+				double hypotenuse = sqrt(pow(firstEnd-firstCenter,2) + pow(secondEnd-secondCenter, 2));
+				rotation = (int)(2 * toDegrees(acos(adjacent / hypotenuse)));
 				if(rotation == 0 && !(firstCurrent == firstEnd && secondCurrent == secondEnd)) { // 0 can mean 180 degrees sin if start != end
 					rotation = 180;
 				} 
@@ -397,6 +407,12 @@ endOfLine : END_OF_LINE {
 	zCurrent = zValue;
 	iValue = jValue = kValue = 0;
 };
+
+LINE_NUMBER	: 'n' Digit Digit? Digit? Digit? Digit?;
+
+WHITESPACE	: ( ' ' | '\t' )+ -> skip ;
+
+END_OF_LINE	: ( '\r' | '\n' | '\r' '\n' );
 
 NUMBER 		: ('+'|'-')? ( Digit+ | Digit* ('.' Digit+) );
 
@@ -433,6 +449,7 @@ ENDWHILE: 'endwhile' ;
 RETURN	: 'return' ;
 REPEAT	: 'repeat' ;
 ENDREPEAT: 'endrepeat' ;
+
 
 ABS	: 'abs' ;
 ACOS: 'acos' ;

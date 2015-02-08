@@ -1,0 +1,58 @@
+buildscript {
+    repositories {
+        maven { url 'http://repo.spring.io/plugins-release' }
+    }
+    dependencies {
+        classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.6'
+    }
+}
+
+plugins {
+  id 'java'
+  id 'com.github.johnrengelman.shadow' version '1.2.0'
+  id "me.champeau.gradle.antlr4" version "0.1"
+  id 'org.hidetake.ssh' version '1.0.4'
+}
+
+repositories { mavenCentral() }
+ssh.settings { knownHosts = allowAnyHosts; dryRun = true }
+
+dependencies {
+    compile files('lib/ev3classes.jar')
+}
+
+remotes {
+  ev3 {
+    host = '192.168.0.10'
+    user = 'root'
+    password = ''
+  }
+}
+
+jar {
+  manifest {
+   attributes("Class-Path" : "/home/root/lejos/lib/ev3classes.jar /home/root/lejos/libjna/usr/share/java/jna.jar",
+   		"Main-Class" : "HelloWorldGcode")
+   }
+}
+
+task deploy(dependsOn:jar) << {
+  ssh.run { session(remotes.ev3) { put from: jar.path, into: '/home/lejos/programs' } }
+}
+
+task run(dependsOn:deploy) << {
+  ssh.run { session(remotes.ev3) { execute "jrun -cp /home/lejos/programs/$jar.name" } }
+}
+
+antlr4.output file("$projectDir/target/generated-sources/antlr4/dkwakkel/jgcode")
+
+compileJava.dependsOn antlr4
+
+sourceSets.main.java.srcDirs += antlr4.output
+
+configurations {
+	compile.extendsFrom antlr4
+
+	provided
+    compile.extendsFrom provided
+}
