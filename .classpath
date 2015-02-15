@@ -5,11 +5,6 @@
 	<classpathentry kind="src" path="src/main/resources"/>
 	<classpathentry kind="src" path="src/test/java"/>
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry exported="true" kind="lib" path="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.antlr/antlr4/4.2.2/82e4acf27b8aa502128849a0e9bb094bd57a225a/antlr4-4.2.2.jar" sourcepath="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.antlr/antlr4/4.2.2/9c66cd9d4b39c875d1645f3d7b5a0f095761a454/antlr4-4.2.2-sources.jar"/>
-	<classpathentry exported="true" kind="lib" path="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.antlr/antlr4-runtime/4.2.2/23f7a0544b36189d688de27688ebd3111f456c97/antlr4-runtime-4.2.2.jar" sourcepath="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.antlr/antlr4-runtime/4.2.2/acaba860395c48cf01d46f42e3de4c0320d19ec4/antlr4-runtime-4.2.2-sources.jar"/>
-	<classpathentry exported="true" kind="lib" path="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.antlr/antlr4-annotations/4.2.2/ab9b4d205530b2b225987c1740f8d71103835aa4/antlr4-annotations-4.2.2.jar" sourcepath="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.antlr/antlr4-annotations/4.2.2/99c1fc8efe77e8a26580820bcecc3fa24b7d503f/antlr4-annotations-4.2.2-sources.jar"/>
-	<classpathentry exported="true" kind="lib" path="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.antlr/ST4/4.0.8/a1c55e974f8a94d78e2348fa6ff63f4fa1fae64/ST4-4.0.8.jar" sourcepath="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.antlr/ST4/4.0.8/6f23134f1c98dfce77f85defda31bfbce3e2a4ac/ST4-4.0.8-sources.jar"/>
-	<classpathentry exported="true" kind="lib" path="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.abego.treelayout/org.abego.treelayout.core/1.0.1/e31e79cba7a5414cf18fa69f3f0a2cf9ee997b61/org.abego.treelayout.core-1.0.1.jar" sourcepath="C:/Users/Donald/.gradle/caches/modules-2/files-2.1/org.abego.treelayout/org.abego.treelayout.core/1.0.1/6e1dd6f6efdb453c7b8ba35726c63fbf50cd7142/org.abego.treelayout.core-1.0.1-sources.jar"/>
-	<classpathentry exported="true" kind="lib" path="C:/Users/Donald/workspace/jgcode/lib/ev3classes.jar"/>
+	<classpathentry exported="true" kind="con" path="org.springsource.ide.eclipse.gradle.classpathcontainer"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
