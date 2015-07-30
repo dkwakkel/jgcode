@@ -1,62 +1,45 @@
-buildscript {
-    repositories {
-        maven { url 'http://repo.spring.io/plugins-release' }
-    }
-    dependencies {
-        classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.6'
-    }
-}
-
 plugins {
-  id 'java'
-  id 'com.github.johnrengelman.shadow' version '1.2.0'
-  id "me.champeau.gradle.antlr4" version "0.1"
-  id 'org.hidetake.ssh' version '1.0.4'
+	id 'java'
+	id 'antlr'
+	id 'org.hidetake.ssh' version '1.1.1'
 }
 
 repositories { mavenCentral() }
-ssh.settings { knownHosts = allowAnyHosts; dryRun = true }
+
+sourceCompatibility = targetCompatibility = 1.7
 
 dependencies {
-    compile files('lib/ev3classes.jar')
+	antlr 'org.antlr:antlr4:4.5'
+	compile files('lib/ev3classes.jar')
 }
 
+generateGrammarSource { outputDirectory file("$projectDir/build/generated-src/antlr/main/dkwakkel/jgcode") }
+
 remotes {
-  ev3 {
-    host = '192.168.0.10'
-    user = 'root'
-    password = ''
-  }
+	ev3 {
+		host = '10.0.1.1'
+		user = 'root'
+		password = 'does_not_matter_as_long_as_it_is_not_empty'
+		knownHosts = allowAnyHosts
+	}
 }
 
 jar {
-  manifest {
-   attributes("Class-Path" : "/home/root/lejos/lib/ev3classes.jar /home/root/lejos/libjna/usr/share/java/jna.jar",
-   		"Main-Class" : "HelloWorldGcode")
-   }
+	manifest {
+		attributes("Class-Path" : "/home/root/lejos/lib/ev3classes.jar /home/root/lejos/libjna/usr/share/java/jna.jar",
+		"Main-Class" : "EV3Machine")
+	}
+	from { configurations.runtime.collect { it.isDirectory() ? it : zipTree(it) } }
 }
 
 task deploy(dependsOn:jar) << {
-  ssh.run { session(remotes.ev3) { put from: jar.path, into: '/home/lejos/programs' } }
+	ssh.run {
+		session(remotes.ev3) {
+			println "scp $jar.archivePath.absolutePath /home/lejos/programs"
+//			put from: jar.archivePath.absolutePath, into: '/home/lejos/programs'
+			execute "jrun -jar /home/lejos/programs/$jar.archiveName"
+		}
+	}
 }
 
-task run(dependsOn:deploy) << {
-  ssh.run { session(remotes.ev3) { execute "jrun -cp /home/lejos/programs/$jar.name" } }
-}
-
-antlr4.output file("$projectDir/target/generated-sources/antlr4/dkwakkel/jgcode")
-
-compileJava.dependsOn antlr4
-
-sourceSets.main.java.srcDirs += antlr4.output
-
-configurations {
-	compile.extendsFrom antlr4
-
-	provided
-    compile.extendsFrom provided
-}
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '2.2.1'
-}
+task wrapper(type: Wrapper) { gradleVersion = '2.3' }

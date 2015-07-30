@@ -218,7 +218,7 @@ group6 : g20 | g21; //  units
 
 // Table 5: G codes
 g0 : 'g0' x? y? z? a? b? c? { group1Value = 0; } ; // rapid positioning
-g1 : 'g1' x? y? z? a? b? c? { group1Value = 1; }; // linear interpolation
+g1 : 'g1' x? y? z? a? b? c? { group1Value = 1; };  // linear interpolation
 g2 : 'g2' x? y? z? a? b? c? (r | i? j? k?) { radiusFormat = $r.ctx!=null; group1Value = 2; }; // circular/helical interpolation (clockwise)
 g3 : 'g3' x? y? z? a? b? c? (r | i? j? k?) { radiusFormat = $r.ctx!=null; group1Value = 3; }; // circular/helical interpolation (counterclockwise)
 
