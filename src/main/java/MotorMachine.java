@@ -5,6 +5,7 @@ import static java.lang.StrictMath.atan2;
 import static java.lang.StrictMath.ceil;
 import static java.lang.StrictMath.cos;
 import static java.lang.StrictMath.max;
+import static java.lang.StrictMath.pow;
 import static java.lang.StrictMath.sin;
 import static java.lang.StrictMath.sqrt;
 import dkwakkel.jgcode.GCodeParser;
@@ -35,8 +36,8 @@ public class MotorMachine implements GCodeParser.Machine
 			System.out.println(name + " speed: " + speed);
 		}
 
-		public void moveTo(double degrees) {
-			System.out.println(name + " move to: " + degrees);
+		public void moveTo(double valueInMM) {
+			System.out.println(name + " move to: " + valueInMM);
 		}
 	}
 
@@ -57,6 +58,7 @@ public class MotorMachine implements GCodeParser.Machine
 
 		public void setMotor(Motor motor) {
 			this.motor = motor;
+			origin = currentValue = currentFeedRate = 0;
 		}
 
 		void setSpeed(double feedRateInUnitPerMinute) {
@@ -78,6 +80,7 @@ public class MotorMachine implements GCodeParser.Machine
 		public void setUnit(CANON_UNITS units) {
 			origin = convertUnit(this.units, units, origin);
 			currentValue = convertUnit(this.units, units, currentValue);
+			this.units = units;
 		}
 	}
 
@@ -246,7 +249,7 @@ public class MotorMachine implements GCodeParser.Machine
 	}
 
 	private static double sqr(double value) {
-		return value + value;
+		return pow(value, 2);
 	}
 
 	@Override

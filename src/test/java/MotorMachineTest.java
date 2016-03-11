@@ -8,56 +8,57 @@ import org.junit.runner.RunWith;
 @RunWith(Theories.class)
 public class MotorMachineTest
 {
-	TestMotor			xMotor	= new TestMotor(MotorMachine.Axis.X.name());
-	TestMotor			yMotor	= new TestMotor(MotorMachine.Axis.Y.name());
-	TestMotor			zMotor	= new TestMotor(MotorMachine.Axis.Z.name());
+	private final TestMotor			xMotor	= new TestMotor(MotorMachine.Axis.X.name());
+	private final TestMotor			yMotor	= new TestMotor(MotorMachine.Axis.Y.name());
+	private final TestMotor			zMotor	= new TestMotor(MotorMachine.Axis.Z.name());
+	private final TestMotor			aMotor	= new TestMotor(MotorMachine.Axis.A.name());
+	private final TestMotor			bMotor	= new TestMotor(MotorMachine.Axis.B.name());
+	private final TestMotor			cMotor	= new TestMotor(MotorMachine.Axis.C.name());
 
-	MotorMachine	machine	= new MotorMachine();
+	private final MotorMachine	machine	= new MotorMachine();
 	{
 		MotorMachine.Axis.X.setMotor(xMotor);
 		MotorMachine.Axis.Y.setMotor(yMotor);
 		MotorMachine.Axis.Z.setMotor(zMotor);
+		MotorMachine.Axis.A.setMotor(aMotor);
+		MotorMachine.Axis.B.setMotor(bMotor);
+		MotorMachine.Axis.C.setMotor(cMotor);
 	}
 
 	@DataPoints
-	public static Double[] status() {
+	public static Double[] values() {
 		return new Double[] { 0.0, 1.0, -1.0, 101.0, -101.0, -1000.1, 1000.1 };
 	}
 
 	@Theory
-	public void straight_feed(Double x, Double y, Double z) {
-		assertStraightFeed(x, y, z);
-	}
-
-	private void assertStraightFeed(double x, double y, double z) {
-		machine.STRAIGHT_FEED(x, y, z, 0, 0, 0);
+	public void straight_feed(Double x, Double y, Double z, Double a, Double b, Double c) {
+		machine.STRAIGHT_FEED(x, y, z, a, b, c);
 
 		double delta = 0;
-		assertEquals(calculateExpected(x, MotorMachine.Axis.X), xMotor.degrees, delta);
-		assertEquals(calculateExpected(y, MotorMachine.Axis.Y), yMotor.degrees, delta);
-		assertEquals(calculateExpected(z, MotorMachine.Axis.Z), zMotor.degrees, delta);
-	}
-
-	private double calculateExpected(double x, MotorMachine.Axis axis) {
-		return (int) ((x / axis.mmPerRotation) * 360);
+		assertEquals(x, xMotor.value, delta);
+		assertEquals(y, yMotor.value, delta);
+		assertEquals(z, zMotor.value, delta);
+		assertEquals(a, aMotor.value, delta);
+		assertEquals(b, bMotor.value, delta);
+		assertEquals(c, cMotor.value, delta);
 	}
 
 	class TestMotor extends MotorMachine.Motor
 	{
-		int		degrees;
-		float	speed;
+		double	value;
+		double	speed;
 
 		public TestMotor(String name) {
 			super(name);
 		}
 
 		@Override
-		public void moveTo(int degrees) {
-			this.degrees += degrees;
+		public void moveTo(double valueInMM) {
+			this.value = valueInMM;
 		}
 
 		@Override
-		public void setSpeed(float speed) {
+		public void setSpeed(double speed) {
 			this.speed = speed;
 		}
 	}

@@ -22,7 +22,7 @@ public enum CANON_COMP_SIDE { CANON_COMP_RIGHT, CANON_COMP_LEFT, CANON_COMP_OFF 
 
 private static double INCH_IN_MM = 25.4;
 public static double convertUnit(CANON_UNITS from, CANON_UNITS to, double input)   {
-	return from == to ? input : (to == CANON_UNITS.CANON_UNITS_MM ? input / INCH_IN_MM : input * INCH_IN_MM);
+	return from == to ? input : (to == CANON_UNITS.CANON_UNITS_MM ? input * INCH_IN_MM : input / INCH_IN_MM);
 }
 
 // Table 9. Canonical Machining Functions Called By Interpreter
@@ -94,7 +94,9 @@ public interface Machine {
 	
 	Machine machine;
 
-	double aValue;
+	String messageComment;
+
+    double aValue;
 	double bValue;
 	double cValue;
 	double iValue;
@@ -130,9 +132,11 @@ program		: PERCENT END_OF_LINE ( line )* PERCENT END_OF_LINE | ( line )* ;
 
 line		: ( BLOCK_DELETE )? ( LINE_NUMBER )? ( segment )* endOfLine ;
 
-segment		: word | parameterSetting | comment { machine.COMMENT($comment.text); } | oword_label oword_statement ;
+segment		: word | parameterSetting | comment | oword_label oword_statement ;
 
-comment		: BRACKET_COMMENT | LINE_COMMENT; // TODO: return message without brackets
+comment		: ignoredComment | messageComment;
+ignoredComment : '(' .*? ')';
+messageComment : '(MSG' .*? ')' { messageComment = $comment.text; } ; 
 
 parameterSetting : parameter EQUALS e ;
 
@@ -217,18 +221,18 @@ group6 : g20 | g21; //  units
 //group0 = G4 | G10 | G28 | G30 | G53 | G92 | G92.1 | G92.2 | G92.3;
 
 // Table 5: G codes
-g0 : 'g0' x? y? z? a? b? c? { group1Value = 0; } ; // rapid positioning
-g1 : 'g1' x? y? z? a? b? c? { group1Value = 1; };  // linear interpolation
-g2 : 'g2' x? y? z? a? b? c? (r | i? j? k?) { radiusFormat = $r.ctx!=null; group1Value = 2; }; // circular/helical interpolation (clockwise)
-g3 : 'g3' x? y? z? a? b? c? (r | i? j? k?) { radiusFormat = $r.ctx!=null; group1Value = 3; }; // circular/helical interpolation (counterclockwise)
+g0 : 'G00' x? y? z? a? b? c? { group1Value = 0; } ; // rapid positioning
+g1 : (G '0'* '1') x? y? z? a? b? c? { group1Value = 1; };  // linear interpolation
+g2 : (G '0'* '2') x? y? z? a? b? c? (r | i? j? k?) { radiusFormat = $r.ctx!=null; group1Value = 2; }; // circular/helical interpolation (clockwise)
+g3 : (G '0'* '3') x? y? z? a? b? c? (r | i? j? k?) { radiusFormat = $r.ctx!=null; group1Value = 3; }; // circular/helical interpolation (counterclockwise)
 
 //G4 dwell
 //G10 coordinate system origin setting
 //G17 XY-plane selection
 //G18 XZ-plane selection
 //G19 YZ-plane selection
-g20 : 'g20' { machine.USE_LENGTH_UNITS(CANON_UNITS.CANON_UNITS_INCHES); };
-g21 : 'g21' { machine.USE_LENGTH_UNITS(CANON_UNITS.CANON_UNITS_MM); };
+g20 : (G '0'* '20') { machine.USE_LENGTH_UNITS(CANON_UNITS.CANON_UNITS_INCHES); };
+g21 : (G '0'* '21') { machine.USE_LENGTH_UNITS(CANON_UNITS.CANON_UNITS_MM); };
 //G28 return to home
 //G30 return to secondar'y'home
 //G38.2 straight probe
@@ -340,7 +344,11 @@ primitiveExpression returns [double v]:
 	| '0' // TODO: why NUMBER does not work for '0'?
 ; 
 
-endOfLine : END_OF_LINE {
+endOfLine : ';' END_OF_LINE | END_OF_LINE {
+	if(messageComment != null) {
+		machine.COMMENT(messageComment);
+		messageComment = null;
+	}
 	switch(group1Value) {
 		case 0: { machine.STRAIGHT_TRAVERSE(xValue, yValue, zValue, aValue, bValue, cValue); break; }
 		case 1: { machine.STRAIGHT_FEED(xValue, yValue, zValue, aValue, bValue, cValue); break; }
@@ -387,7 +395,8 @@ endOfLine : END_OF_LINE {
 				rotation = (int)(2 * toDegrees(acos(adjacent / hypotenuse)));
 				if(rotation == 0 && !(firstCurrent == firstEnd && secondCurrent == secondEnd)) { // 0 can mean 180 degrees sin if start != end
 					rotation = 180;
-				} 
+				}
+				// check if rotation is more then 180 degrees
 				double a = (secondEnd - secondCurrent) / (firstEnd - firstCurrent);
 				double b = secondCurrent - (firstCurrent * a);
 				if(firstEnd > firstCenter ^ (firstEnd == firstCurrent || secondCurrent < (a * firstCurrent + b))) {
@@ -396,6 +405,9 @@ endOfLine : END_OF_LINE {
 			}
 			if(group1Value == 3) { // counterclockwise
 				rotation = rotation - 360;
+				if(rotation == 0) { // in case of full circle
+					rotation = -360;
+				}
 			}
 
 			machine.ARC_FEED(firstEnd, secondEnd, firstCenter, secondCenter, rotation, axisEnd, aValue, bValue, cValue);
@@ -408,7 +420,7 @@ endOfLine : END_OF_LINE {
 	iValue = jValue = kValue = 0;
 };
 
-LINE_NUMBER	: 'n' Digit Digit? Digit? Digit? Digit?;
+LINE_NUMBER	: N Digit Digit? Digit? Digit? Digit?;
 
 WHITESPACE	: ( ' ' | '\t' )+ -> skip ;
 
@@ -417,10 +429,6 @@ END_OF_LINE	: ( '\r' | '\n' | '\r' '\n' );
 NUMBER 		: ('+'|'-')? ( Digit+ | Digit* ('.' Digit+) );
 
 fragment Digit		: '0'..'9' ;
-
-BRACKET_COMMENT		: '(' .*? ')' ;
-
-LINE_COMMENT : ';' .*? END_OF_LINE;
 
 NAME		: '<' ~('>')+ '>' ;
 
@@ -495,5 +503,30 @@ CARET           : '^' ;
 
 BLOCK_DELETE	: '/';
 
-
+fragment A:('a'|'A');
+fragment B:('b'|'B');
+fragment C:('c'|'C');
+fragment D:('d'|'D');
+fragment E:('e'|'E');
+fragment F:('f'|'F');
+fragment G:('g'|'G');
+fragment H:('h'|'H');
+fragment I:('i'|'I');
+fragment J:('j'|'J');
+fragment K:('k'|'K');
+fragment L:('l'|'L');
+fragment M:('m'|'M');
+fragment N:('n'|'N');
+fragment O:('o'|'O');
+fragment P:('p'|'P');
+fragment Q:('q'|'Q');
+fragment R:('r'|'R');
+fragment S:('s'|'S');
+fragment T:('t'|'T');
+fragment U:('u'|'U');
+fragment V:('v'|'V');
+fragment W:('w'|'W');
+fragment X:('x'|'X');
+fragment Y:('y'|'Y');
+fragment Z:('z'|'Z');
 
