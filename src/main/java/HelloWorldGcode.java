@@ -5,15 +5,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
-import dkwakkel.jgcode.GCodeParser;
-import dkwakkel.jgcode.GCodeParser.Machine;
-
 public class HelloWorldGcode {
 
 	public static void main(String[] args) throws Throwable {
 		try(InputStream gcodeStream = HelloWorldGcode.class.getResourceAsStream("helloworld.gcode")) {
-			// GCodeParser.execute(wrapWithProxy(null), gcodeStream);
-			GCodeParser.execute(new MotorMachine(), gcodeStream);
+			// Machine machine = wrapWithProxy(null);
+			Machine machine = new MotorMachine();
+			MotorMachine.execute(machine, gcodeStream);
 		}
 	}
 

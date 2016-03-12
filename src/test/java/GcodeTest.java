@@ -13,8 +13,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import dkwakkel.jgcode.GCodeParser;
-
 @RunWith(Parameterized.class)
 public class GcodeTest
 {
@@ -119,7 +117,7 @@ public class GcodeTest
 
 	private void evaluateCode() throws Exception, IOException {
 		try (InputStream gcodeStream = new ByteArrayInputStream((line + "\n").getBytes(UTF_8))) {
-			GCodeParser.execute(machine, gcodeStream);
+			MotorMachine.execute(machine, gcodeStream);
 		}
 	}
 

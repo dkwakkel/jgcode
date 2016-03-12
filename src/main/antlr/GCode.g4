@@ -11,138 +11,54 @@ package dkwakkel.jgcode;
 import static java.lang.StrictMath.*;
 }
 
-@parser::members {
+fragment Digit		: '0'..'9' ;
 
-public enum CANON_DIRECTION { CANON_STOPPED, CANON_CLOCKWISE, CANON_COUNTERCLOCKWISE }
-public enum CANON_FEED_REFERENCE { CANON_WORKPIECE, CANON_XYZ }
-public enum CANON_MOTION_MODE { CANON_EXACT_STOP, CANON_EXACT_PATH, CANON_CONTINUOUS }
-public enum CANON_PLANE { CANON_PLANE_XY, CANON_PLANE_YZ, CANON_PLANE_XZ }
-public enum CANON_UNITS { CANON_UNITS_INCHES, CANON_UNITS_MM /*, CANON_UNITS_CM */ }
-public enum CANON_COMP_SIDE { CANON_COMP_RIGHT, CANON_COMP_LEFT, CANON_COMP_OFF }
+// For case insensitive matching
+fragment A:('a'|'A');
+fragment B:('b'|'B');
+fragment C:('c'|'C');
+fragment D:('d'|'D');
+fragment E:('e'|'E');
+fragment F:('f'|'F');
+fragment G:('g'|'G');
+fragment H:('h'|'H');
+fragment I:('i'|'I');
+fragment J:('j'|'J');
+fragment K:('k'|'K');
+fragment L:('l'|'L');
+fragment M:('m'|'M');
+fragment N:('n'|'N');
+fragment O:('o'|'O');
+fragment P:('p'|'P');
+fragment Q:('q'|'Q');
+fragment R:('r'|'R');
+fragment S:('s'|'S');
+fragment T:('t'|'T');
+fragment U:('u'|'U');
+fragment V:('v'|'V');
+fragment W:('w'|'W');
+fragment X:('x'|'X');
+fragment Y:('y'|'Y');
+fragment Z:('z'|'Z');
 
-private static double INCH_IN_MM = 25.4;
-public static double convertUnit(CANON_UNITS from, CANON_UNITS to, double input)   {
-	return from == to ? input : (to == CANON_UNITS.CANON_UNITS_MM ? input * INCH_IN_MM : input / INCH_IN_MM);
-}
+fragment COMMENT_TEXT : ~(')')* ;
 
-// Table 9. Canonical Machining Functions Called By Interpreter
-public interface Machine {
 
-	// Representation
-	void SET_ORIGIN_OFFSETS(double x, double y, double z, double a, double b, double c);
-	void USE_LENGTH_UNITS(CANON_UNITS units);
-
-	// Free Space Motion
-	void STRAIGHT_TRAVERSE(double x, double y, double z, double a, double b, double c);
-	
-	// Machining Attributes
-	void SELECT_PLANE(CANON_PLANE plane);
-	void SET_FEED_RATE(double rate);
-	void SET_FEED_REFERENCE(CANON_FEED_REFERENCE reference);
-	void SET_MOTION_CONTROL_MODE(CANON_MOTION_MODE mode);
-	void START_SPEED_FEED_SYNCH();
-	void STOP_SPEED_FEED_SYNCH();
-
-	// Machining Functions
-	void ARC_FEED(double first_end, double second_end, double first_axis, double second_axis, int rotation, double axis_end_point, double a, double b, double c);
-	void DWELL(double seconds);
-	void STRAIGHT_FEED(double x, double y, double z, double a, double b, double c);
-
-	// Probe Functions
-	void STRAIGHT_PROBE(double x, double y, double z, double a, double b, double c);
-
-	// Spindle Functions
-	void ORIENT_SPINDLE(double orientation, CANON_DIRECTION direction);
-	void SET_SPINDLE_SPEED(double r);
-	void START_SPINDLE_CLOCKWISE();
-	void START_SPINDLE_COUNTERCLOCKWISE();
-	void STOP_SPINDLE_TURNING();
-
-	// Tool Functions
-	void CHANGE_TOOL(int slot);
-	void SELECT_TOOL(int i);
-	void USE_TOOL_LENGTH_OFFSET(double offset);
-
-	// Miscellaneous Functions
-	void COMMENT(String s);
-	void DISABLE_FEED_OVERRIDE();
-	void DISABLE_SPEED_OVERRIDE();
-	void ENABLE_FEED_OVERRIDE();
-	void ENABLE_SPEED_OVERRIDE();
-	void FLOOD_OFF();
-	void FLOOD_ON();
-	void INIT_CANON();
-	void MESSAGE(String s);
-	void MIST_OFF();
-	void MIST_ON();
-	void PALLET_SHUTTLE();
-
-	// Program Functions
-	void OPTIONAL_PROGRAM_STOP();
-	void PROGRAM_END();
-	void PROGRAM_STOP();
-	
-	void SET_CUTTER_RADIUS_COMPENSATION (double radius);
-	void START_CUTTER_RADIUS_COMPENSATION (CANON_COMP_SIDE side);
-	void STOP_CUTTER_RADIUS_COMPENSATION ();
-};
-
-	// See Table 2. Default Parameter File
-	// TODO: Persistence
-	double[] parameters = new double[5400 + 1];
-	{ parameters[5220] = 1.0; }
-	
-	Machine machine;
-
-	String messageComment;
-
-    double aValue;
-	double bValue;
-	double cValue;
-	double iValue;
-	double jValue;
-	double kValue;
-	double rValue;
-	double xValue;
-	double yValue;
-	double zValue;
-
-	double xCurrent;
-	double yCurrent;
-	double zCurrent;
-
-	int group1Value;
-	boolean radiusFormat;
-	CANON_PLANE plane = CANON_PLANE.CANON_PLANE_XY;
-	
-	public static void execute(Machine machine, java.io.InputStream in) throws Exception {
-		ANTLRInputStream input = new ANTLRInputStream(in == null ? System.in : in);
-
-		GCodeLexer lexer = new GCodeLexer(input);
-		CommonTokenStream tokens = new CommonTokenStream(lexer);
-		GCodeParser parser = new GCodeParser(tokens);
-		parser.machine = machine;
-
-		ParseTreeWalker walker = new ParseTreeWalker();
-		walker.walk( new GCodeBaseListener(), parser.program());
-	}
-}
-
-program		: PERCENT END_OF_LINE ( line )* PERCENT END_OF_LINE | ( line )* ;
+program		: PERCENT END_OF_LINE ( line )* (PERCENT END_OF_LINE?) | ( line )* ;
 
 line		: ( BLOCK_DELETE )? ( LINE_NUMBER )? ( segment )* endOfLine ;
 
-segment		: word | parameterSetting | comment | oword_label oword_statement ;
+segment		: word | parameterSetting | comment | oword_label oword_statement;
 
-comment		: ignoredComment | messageComment;
-ignoredComment : '(' .*? ')';
-messageComment : '(MSG' .*? ')' { messageComment = $comment.text; } ; 
+comment		: MESSAGE_COMMENT | IGNORED_COMMENT ;
+MESSAGE_COMMENT : '(MSG' COMMENT_TEXT ')' ;
+IGNORED_COMMENT : '(' COMMENT_TEXT ')' ;
 
 parameterSetting : parameter EQUALS e ;
 
 parameter	: HASH designator ;
 
-designator	: NUMBER |NAME | parameter | LBRACKET e RBRACKET ;
+designator	: NUMBER | NAME | parameter | bracketExpression ;
 
 oword_label	: 'o' NUMBER | 'o' NAME | 'o' parameter ;
 
@@ -168,122 +84,216 @@ parameterList	: bracketExpression*;
 
 optReturnValue	: bracketExpression | ;
 
-word	: axisWord | dimensionWord | gWord | WordLetter e;
-gWord	: group1 | group6;
+word	: axisWord | dimensionWord | gWord | mWord | WordLetter e;
 
 axisWord : a | b | c | i | j | k | r | x | y | z;
-a : 'a' e { aValue = Double.valueOf($e.text); }; // A-axis of machine
-b : 'b' e { bValue = Double.valueOf($e.text); }; // B-axis of machine
-c : 'c' e { cValue = Double.valueOf($e.text); }; // C-axis of machine
-i : 'i' e { iValue = Double.valueOf($e.text); }; // X-axis offset for arcs | 'x' offset in G87 canned cycle
-j : 'j' e { jValue = Double.valueOf($e.text); }; // Y-axis offset for arcs | 'y' offset in G87 canned cycle
-k : 'k' e { kValue = Double.valueOf($e.text); }; // Z-axis offset for arcs | 'z' offset in G87 canned cycle
-r : 'r' e { rValue = Double.valueOf($e.text); }; // arc radius | canned cycle plane
-x : 'x' e { xValue = Double.valueOf($e.text); }; // X-axis of machine
-y : 'y' e { yValue = Double.valueOf($e.text); }; // Y-axis of machine
-z : 'z' e { zValue = Double.valueOf($e.text); }; // Z-axis of machine
+a : ('a'|'A') e ; // A-axis of machine
+b : ('b'|'B') e ; // B-axis of machine
+c : ('c'|'C') e ; // C-axis of machine
+i : ('i'|'I') e ; // X-axis offset for arcs | 'x' offset in G87 canned cycle
+j : ('j'|'J') e ; // Y-axis offset for arcs | 'y' offset in G87 canned cycle
+k : ('k'|'K') e ; // Z-axis offset for arcs | 'z' offset in G87 canned cycle
+r : ('r'|'R') e ; // arc radius | canned cycle plane
+x : ('x'|'X') e ; // X-axis of machine
+y : ('y'|'Y') e ; // Y-axis of machine
+z : ('z'|'Z') e ; // Z-axis of machine
 
 dimensionWord : f;
-f : 'f' e { machine.SET_FEED_RATE(Double.valueOf($e.text)); }; // feedrate
+f : ('f'|'F') e; // feedrate
 
-WordLetter:
-	'd' | // tool radius compensation NUMBER
-//	'g' | // general function (see Table 5)
-	'h' | // tool length offset index
-	'l' | // NUMBER of repetitions in canned cycles | key used with G10
-	'm' | // miscellaneous function (see Table 7)
-	'p' | // dwell time in canned cycles | dwell time with G4 | key used with G10
-	'q' | // feed increment in G83 canned cycle
-	's' | // spindle speed
-	't' | // tool selection
+WordLetter: 
+	('d'|'D') | // tool radius compensation NUMBER
+	('g'|'G') | // general function (see Table 5)
+	('h'|'H') | // tool length offset index
+	('l'|'L') | // NUMBER of repetitions in canned cycles | key used with G10
+	('m'|'M') | // miscellaneous function (see Table 7)
+	('p'|'P') | // dwell time in canned cycles | dwell time with G4 | key used with G10
+	('q'|'Q') | // feed increment in G83 canned cycle
+	('s'|'S') | // spindle speed
+	('t'|'T') | // tool selection
 	ATSIGN |
 	CARET;
+
+//// Table 5: G codes /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+gWord	: group0 | group1 | group2 | group3 | group5 | group6 | group7 | group8 | group10 | group12 | group13;
 	
 // The modal groups for G codes are:
-group1 : g0 | g1 | g2 | g3; // | G38.2 | G80 | G81 | G82 | G83 | G84 | G85 | G86 | G87 | G88 | G89; // motion
-//group 2 = {G17, G18, G19} plane selection
-//group 3 = {G90, G91} distance mode
-//group 5 = {G93, G94} feed rate mode
+group1 : g0 | g1 | g2 | g3 | g38_2 | g80 | g81 | g82 | g83 | g84 | g85 | g86 | g87 | g88 | g89; // motion
+group2 : g17 | g18 | g19 ; // plane selection
+group3 : g90 | g91 ; // distance mode
+group5 : g93 | g94 ; // feed rate mode
 group6 : g20 | g21; //  units
-//group 7 = {G40, G41, G42} cutter radius compensation
-//group 8 = {G43, G49} tool length offset
-//group 10 = {G98, G99} return mode in canned cycles
-//group 12 = {G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection
-//group 13 = {G61, G61.1, G64} path control mode
+group7 : g40 | g41 | g42 ; // cutter radius compensation
+group8 : g43 | g49 ; // tool length offset
+group10 : g98 | g99 ; // return mode in canned cycles
+group12 : g54 | g55 | g56 | g57 | g58 | g59 | g59_1 | g59_2 | g59_3 ; // coordinate system selection
+group13 : g61 | g61_1 | g64 ; //  path control mode
+
+// In addition to the above modal groups, there is a group for non-modal G codes:
+group0 : g4 | g10 | g28 | g30 | g53 | g92 | g92_1 | g92_2 | g92_3;
+
+G0 : G '0'* '0' ;
+G1 : G '0'* '1' ;
+G2 : G '0'* '2' ;
+G3 : G '0'* '3' ;
+G4 : G '0'* '4' ;
+G10 : G '0'* '10' ;
+G17 : G '0'* '17' ;
+G18 : G '0'* '18' ;
+G19 : G '0'* '19' ;
+G20 : G '0'* '20' ;
+G21 : G '0'* '21' ;
+G28 : G '0'* '28' ;
+G30 : G '0'* '30' ;
+G38_2 : G '0'* '38.2' ;
+G40 : G '0'* '40' ;
+G41 : G '0'* '41' ;
+G42 : G '0'* '42' ;
+G43 : G '0'* '43' ;
+G49 : G '0'* '49' ;
+G53 : G '0'* '53' ;
+G54 : G '0'* '54' ;
+G55 : G '0'* '55' ;
+G56 : G '0'* '56' ;
+G57 : G '0'* '57' ;
+G58 : G '0'* '58' ;
+G59 : G '0'* '59' ;
+G59_1 : G '0'* '59.1' ;
+G59_2 : G '0'* '59.2' ;
+G59_3 : G '0'* '59.3' ;
+G61 : G '0'* '61' ;
+G61_1 : G '0'* '61.1' ;
+G64 : G '0'* '64' ;
+G80 : G '0'* '80' ;
+G81 : G '0'* '81' ;
+G82 : G '0'* '82' ;
+G83 : G '0'* '83' ;
+G84 : G '0'* '84' ;
+G85 : G '0'* '85' ;
+G86 : G '0'* '86' ;
+G87 : G '0'* '87' ;
+G88 : G '0'* '88' ;
+G89 : G '0'* '89' ;
+G90 : G '0'* '90' ;
+G91 : G '0'* '91' ;
+G92 : G '0'* '92' ;
+G92_1 : G '0'* '92.1' ;
+G92_2 : G '0'* '92.2' ;
+G92_3 : G '0'* '92.3' ;
+G93 : G '0'* '93' ;
+G94 : G '0'* '94' ;
+G98 : G '0'* '98' ;
+G99 : G '0'* '99' ;
+
+g0 : G0 x? y? z? a? b? c? ; // rapid positioning
+g1 : G1 x? y? z? a? b? c? ;  // linear interpolation
+g2 : G2 x? y? z? a? b? c? (r | i? j? k?) ; // circular/helical interpolation (clockwise)
+g3 : G3 x? y? z? a? b? c? (r | i? j? k?) ; // circular/helical interpolation (counterclockwise)
+g4 : G4 ; // dwell
+g10 : G10 ; // coordinate system origin setting
+g17 : G17 ; // XY-plane selection
+g18 : G18 ; // XZ-plane selection
+g19 : G19 ; // YZ-plane selection
+g20 : G20 ; // inch system selection
+g21 : G21 ; // millimeter system selection
+g28 : G28 ; // return to home
+g30 : G30 ; // return to secondar'y'home
+g38_2 : G38_2 ; // straight probe
+g40 : G40 ; // cancel cutter radius compensation
+g41 : G41 ; // start cutter radius compensation left
+g42 : G42 ; // start cutter radius compensation right
+g43 : G43 ; // tool length offset (plus)
+g49 : G49 ; // cancel tool length offset
+g53 : G53 ; // motion in machine coordinate system
+g54 : G54 ; // use preset work coordinate system 1
+g55 : G55 ; // use preset work coordinate system 2
+g56 : G56 ; // use preset work coordinate system 3
+g57 : G57 ; // use preset work coordinate system 4
+g58 : G58 ; // use preset work coordinate system 5
+g59 : G59 ; // use preset work coordinate system 6
+g59_1 : G59_1 ; // use preset work coordinate system 7
+g59_2 : G59_2 ; // use preset work coordinate system 8
+g59_3 : G59_3 ; // use preset work coordinate system 9
+g61 : G61 ; // set path control mode: exact path
+g61_1 : G61_1 ; // set path control mode: exact stop
+g64 : G64 ; // set path control mode: continuous
+g80 : G80 ; // cancel motion mode (including an'y'canned cycle)
+g81 : G81 ; // canned cycle: drilling
+g82 : G82 ; // canned cycle: drilling with dwell
+g83 : G83 ; // canned cycle: peck drilling
+g84 : G84 ; // canned cycle: right hand tapping
+g85 : G85 ; // canned cycle: boring, no dwell, feed out
+g86 : G86 ; // canned cycle: boring, spindle stop, rapid out
+g87 : G87 ; // canned cycle: back boring
+g88 : G88 ; // canned cycle: boring, spindle stop, manual out
+g89 : G89 ; // canned cycle: boring, dwell, feed out
+g90 : G90 ; // absolute distance mode
+g91 : G91 ; // incremental distance mode
+g92 : G92 ; // offset coordinate systems and set parameters
+g92_1 : G92_1 ; // cancel offset coordinate systems and set parameters to zero
+g92_2 : G92_2 ; // cancel offset coordinate systems but do not reset parameters
+g92_3 : G92_3 ; // appl'y'parameters to offset coordinate systems
+g93 : G93 ; // inverse time feed rate mode
+g94 : G94 ; // units per minute feed rate mode
+g98 : G98 ; // initial level return in canned cycles
+g99 : G99 ; // R-point level return in canned cycles
+
+
+//// Table 7: M codes /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+mWord : mgroup4 | mgroup6 | mgroup7 | mgroup8 | mgroup9 ; 
+
 //The modal groups for M codes are:
-//group 4 = {M0, M1, M2, M30, M60} stopping
-//group 6 = {M6} tool change
-//group 7 = {M3, M4, M5} spindle turning
-//group 8 = {M7, M8, M9} coolant (special case: M7 and M8 ma'y'be active at the same time)
-//group 9 = {M48, M49} enable/disable feed and speed override switches
-//
-//// In addition to the above modal groups, there is a group for non-modal G codes:
-//group0 = G4 | G10 | G28 | G30 | G53 | G92 | G92.1 | G92.2 | G92.3;
+mgroup4 : m0 | m1 | m2 | m30 | m60 ; // stopping
+mgroup6 : m6 ; // tool change
+mgroup7 : m3 | m4 | m5 ; //  spindle turning
+mgroup8 : m7 | m8 | m9 ; // coolant (special case: M7 and M8 ma'y'be active at the same time)
+mgroup9 : m48 | m49 ; // enable/disable feed and speed override switches
 
-// Table 5: G codes
-g0 : 'G00' x? y? z? a? b? c? { group1Value = 0; } ; // rapid positioning
-g1 : (G '0'* '1') x? y? z? a? b? c? { group1Value = 1; };  // linear interpolation
-g2 : (G '0'* '2') x? y? z? a? b? c? (r | i? j? k?) { radiusFormat = $r.ctx!=null; group1Value = 2; }; // circular/helical interpolation (clockwise)
-g3 : (G '0'* '3') x? y? z? a? b? c? (r | i? j? k?) { radiusFormat = $r.ctx!=null; group1Value = 3; }; // circular/helical interpolation (counterclockwise)
+M0 : M '0'* '0' ;
+M1 : M '0'* '1' ;
+M2 : M '0'* '2' ;
+M3 : M '0'* '3' ;
+M4 : M '0'* '4' ;
+M5 : M '0'* '5' ;
+M6 : M '0'* '6' ;
+M7 : M '0'* '7' ;
+M8 : M '0'* '8' ;
+M9 : M '0'* '9' ;
+M30 : M '0'* '30' ;
+M48 : M '0'* '48' ;
+M49 : M '0'* '49' ;
+M60 : M '0'* '60' ;
 
-//G4 dwell
-//G10 coordinate system origin setting
-//G17 XY-plane selection
-//G18 XZ-plane selection
-//G19 YZ-plane selection
-g20 : (G '0'* '20') { machine.USE_LENGTH_UNITS(CANON_UNITS.CANON_UNITS_INCHES); };
-g21 : (G '0'* '21') { machine.USE_LENGTH_UNITS(CANON_UNITS.CANON_UNITS_MM); };
-//G28 return to home
-//G30 return to secondar'y'home
-//G38.2 straight probe
-//G40 cancel cutter radius compensation
-//G41 start cutter radius compensation left
-//G42 start cutter radius compensation right
-//G43 tool length offset (plus)
-//G49 cancel tool length offset
-//G53 motion in machine coordinate system
-//G54 use preset work coordinate system 1
-//G55 use preset work coordinate system 2
-//G56 use preset work coordinate system 3
-//G57 use preset work coordinate system 4
-//G58 use preset work coordinate system 5
-//G59 use preset work coordinate system 6
-//G59.1 use preset work coordinate system 7
-//G59.2 use preset work coordinate system 8
-//G59.3 use preset work coordinate system 9
-//G61 set path control mode: exact path
-//G61.1 set path control mode: exact stop
-//G64 set path control mode: continuous
-//G80 cancel motion mode (including an'y'canned cycle)
-//G81 canned cycle: drilling
-//G82 canned cycle: drilling with dwell
-//G83 canned cycle: peck drilling
-//G84 canned cycle: right hand tapping
-//G85 canned cycle: boring, no dwell, feed out
-//G86 canned cycle: boring, spindle stop, rapid out
-//G87 canned cycle: back boring
-//G88 canned cycle: boring, spindle stop, manual out
-//G89 canned cycle: boring, dwell, feed out
-//G90 absolute distance mode
-//G91 incremental distance mode
-//G92 offset coordinate systems and set parameters
-//G92.1 cancel offset coordinate systems and set parameters to zero
-//G92.2 cancel offset coordinate systems but do not reset parameters
-//G92.3 appl'y'parameters to offset coordinate systems
-//G93 inverse time feed rate mode
-//G94 units per minute feed rate mode
-//G98 initial level return in canned cycles
-//G99 R-point level return in canned cycles
+m0 : M0 ; // program stop
+m1 : M1 ; // optional program stop
+m2 : M2 ; // program end
+m3 : M3 ; // turn spindle clockwise
+m4 : M4 ; // turn spindle counterclockwise
+m5 : M5 ; // stop spindle turning
+m6 : M6 ; // tool change
+m7 : M7 ; // mist coolant on
+m8 : M8 ; // flood coolant on
+m9 : M9 ; //mist and flood coolant off
+m30 : M30 ; // program end, pallet shuttle, and reset
+m48 : M48 ; // enable speed and feed overrides
+m49 : M49 ; // disable speed and feed overrides
+m60 : M60 ; // pallet shuttle and program stop
 
-e		: comparisonExpression (
+
+e returns [double v]: logicalExpression { $v = $logicalExpression.v; };
+
+logicalExpression returns [double v]:
+				comparisonExpression (
 					( OR comparisonExpression ) |
 					( XOR comparisonExpression ) |
 					( AND comparisonExpression )
 				)*
 				;
 
-comparisonExpression
-				: plusMinExpression (
+comparisonExpression returns [double v]:
+				plusMinExpression (
 					( EQ plusMinExpression ) |
 					( NE plusMinExpression ) |
 					( GT plusMinExpression ) |
@@ -292,14 +302,14 @@ comparisonExpression
 					( LE plusMinExpression )
 				)* ;
 
-plusMinExpression
-				: aggregateExpression (
+plusMinExpression returns [double v]:
+				aggregateExpression (
 					( PLUS aggregateExpression ) |
 					( MINUS aggregateExpression )
 				)* ;
 
-aggregateExpression
-				: powerExpression (
+aggregateExpression returns [double v]:
+				powerExpression (
 					( TIMES powerExpression ) |
 					( SLASH powerExpression ) |
 					( MOD powerExpression )
@@ -335,155 +345,68 @@ unaryExpression returns [double v]:
 	| primitiveExpression
 ;
 
-bracketExpression returns [double v]:	LBRACKET e RBRACKET;
+bracketExpression returns [double v]:	LBRACKET e RBRACKET { $v = $e.v; };
 
-primitiveExpression returns [double v]:
+primitiveExpression returns [double v]: 
 	bracketExpression { $v = $bracketExpression.v; }
 	| parameter
 	| NUMBER { $v = Double.valueOf($NUMBER.text); }
-	| '0' // TODO: why NUMBER does not work for '0'?
 ; 
 
-endOfLine : ';' END_OF_LINE | END_OF_LINE {
-	if(messageComment != null) {
-		machine.COMMENT(messageComment);
-		messageComment = null;
-	}
-	switch(group1Value) {
-		case 0: { machine.STRAIGHT_TRAVERSE(xValue, yValue, zValue, aValue, bValue, cValue); break; }
-		case 1: { machine.STRAIGHT_FEED(xValue, yValue, zValue, aValue, bValue, cValue); break; }
-		case 2: 
-		case 3: {
-			double firstEnd, secondEnd, axisEnd, firstCurrent, secondCurrent, firstDelta, secondDelta;
-			switch(plane) {
-				case CANON_PLANE_XY:
-					firstEnd = xValue; secondEnd = yValue; axisEnd = zValue;
-					firstCurrent = xCurrent; firstDelta = iValue;
-					secondCurrent = yCurrent; secondDelta = jValue;
-					break;
-				case CANON_PLANE_XZ:
-					firstEnd = xValue; secondEnd = zValue; axisEnd = yValue;
-					firstCurrent = xCurrent; firstDelta = iValue;
-					secondCurrent = zCurrent; secondDelta = kValue;
-					break;
-				case CANON_PLANE_YZ:
-					firstEnd = yValue; secondEnd = zValue; axisEnd = xValue;
-					firstCurrent = yCurrent; firstDelta = jValue;
-					secondCurrent = zCurrent; secondDelta = kValue;
-					break;
-				default: throw new IllegalStateException("plane=" + plane);
-			}
+endOfLine : ';' END_OF_LINE | END_OF_LINE ;
 
-			int rotation;
-			double firstCenter, secondCenter;			
-			double adjacent = sqrt(pow(firstEnd-firstCurrent,2) + pow(secondEnd-secondCurrent, 2)) / 2;
-			
-			if(radiusFormat) {
-				double r = abs(rValue);
-				double alpha = firstCurrent == firstEnd ? 0 : atan((secondEnd-secondCurrent)/(firstEnd-firstCurrent));
-				double beta = acos(adjacent / r);
-				double firstMid = firstCurrent + (firstEnd - firstCurrent) / 2;
-				double secondMid = secondCurrent + (secondEnd - secondCurrent) / 2;
-				firstCenter = firstCurrent + r * cos(alpha + beta) * (rValue >= 0 ^ firstEnd >= firstCurrent ? -1 : 1);
-				secondCenter = secondCurrent + r * sin(alpha + beta) * (rValue >= 0 ^ secondEnd >= secondCurrent ? 1 : -1);
-				rotation = (int)floor(toDegrees((Math.PI / 2.0) - beta));
-			} else {
-				firstCenter = firstCurrent + firstDelta;
-				secondCenter = secondCurrent + secondDelta;
+WHITESPACE : ( ' ' | '\t' )+ -> channel(HIDDEN);
 
-				double hypotenuse = sqrt(pow(firstEnd-firstCenter,2) + pow(secondEnd-secondCenter, 2));
-				rotation = (int)(2 * toDegrees(acos(adjacent / hypotenuse)));
-				if(rotation == 0 && !(firstCurrent == firstEnd && secondCurrent == secondEnd)) { // 0 can mean 180 degrees sin if start != end
-					rotation = 180;
-				}
-				// check if rotation is more then 180 degrees
-				double a = (secondEnd - secondCurrent) / (firstEnd - firstCurrent);
-				double b = secondCurrent - (firstCurrent * a);
-				if(firstEnd > firstCenter ^ (firstEnd == firstCurrent || secondCurrent < (a * firstCurrent + b))) {
-					rotation += 180;
-				}
-			}
-			if(group1Value == 3) { // counterclockwise
-				rotation = rotation - 360;
-				if(rotation == 0) { // in case of full circle
-					rotation = -360;
-				}
-			}
+LINE_NUMBER	: N Digit Digit? Digit? Digit? Digit? ;
 
-			machine.ARC_FEED(firstEnd, secondEnd, firstCenter, secondCenter, rotation, axisEnd, aValue, bValue, cValue);
-			break;
-		}
-	}
-	xCurrent = xValue;
-	yCurrent = yValue;
-	zCurrent = zValue;
-	iValue = jValue = kValue = 0;
-};
+END_OF_LINE	: ( '\r' | '\n' | '\r' '\n' ) ;
 
-LINE_NUMBER	: N Digit Digit? Digit? Digit? Digit?;
-
-WHITESPACE	: ( ' ' | '\t' )+ -> skip ;
-
-END_OF_LINE	: ( '\r' | '\n' | '\r' '\n' );
-
-NUMBER 		: ('+'|'-')? ( Digit+ | Digit* ('.' Digit+) );
-
-fragment Digit		: '0'..'9' ;
+NUMBER 		: ('+'|'-')? ( Digit+ | Digit* ('.' Digit+) ) ;
 
 NAME		: '<' ~('>')+ '>' ;
 
-fragment Name_Char :
-    | Letter
-    | Digit
-    | '-'
-    | '_'
-    | ' '
-	;
-
-fragment Letter	:  ( 'a'..'z' | 'A'..'Z') ;
-
-SUB		: 'sub' ;
-ENDSUB	: 'endsub' ;
-CALL	: 'call' ('sub')? ;
-DO		: 'do' ;
-WHILE	: 'while' ;
-ELSEIF	: 'elseif' ;
-ELSE	: 'else' ;
-ENDIF	: 'endif' ;
-IF		: 'if' ;
-BREAK	: 'break' ;
-CONTINUE: 'continue' ;
-ENDWHILE: 'endwhile' ;
-RETURN	: 'return' ;
-REPEAT	: 'repeat' ;
-ENDREPEAT: 'endrepeat' ;
+SUB			: S U B ;
+ENDSUB		: E N D S U B;
+CALL		: C A L L (S U B)? ;
+DO			: D O ;
+WHILE		: W H I L E ;
+ELSEIF		: E L S E I F ;
+ELSE		: E L S E ;
+ENDIF		: E N D I F ;
+IF			: I F ;
+BREAK		: B R E A K ;
+CONTINUE	: C O N T I N U E ;
+ENDWHILE	: E N D W H I L E ;
+RETURN		: R E T U R N ;
+REPEAT		: R E P E A T ;
+ENDREPEAT	: E N D R E P E A T ;
 
 
-ABS	: 'abs' ;
-ACOS: 'acos' ;
-ASIN: 'asin' ;
-ATAN: 'atan' ;
-SIN	: 'sin' ;
-COS	: 'cos' ;
-TAN	: 'tan' ;
-AND : 'and' ;
-OR	: 'or' ;
-XOR	: 'xor' ;
-EXP	: 'exp' ;
-FIX	: 'fix';
-FUP	: 'fup' ;
-MOD	: 'mod' ;
-ROUND: 'round' ;
-SQRT: 'sqrt' ;
-LN	: 'ln' ;
-EXISTS	: 'exists' ;
+ABS		: A B S ;
+ACOS	: A C O S ;
+ASIN	: A S I N ;
+ATAN	: A T A N ;
+SIN		: S I N ;
+COS		: C O S ;
+TAN		: T A N ;
+AND 	: A N D ;
+OR		: O R ;
+XOR		: X O R ;
+EXP		: E X P ;
+FIX		: F I X;
+FUP		: F U P ;
+MOD		: M O D ;
+ROUND	: R O U N D ;
+SQRT	: S Q R T ;
+LN		: L N ;
+EXISTS	: E X I S T S ;
 
-EQ	: 'eq' ;
-NE	: 'ne' ;
-GT	: 'gt' ;
-GE	: 'ge' ;
-LT	: 'lt' ;
-LE 	: 'le' ;
+EQ	: E Q ;
+NE	: N E ;
+GT	: Q T ;
+GE	: G E ;
+LT	: L T ;
+LE 	: L E ;
 
 POWER			: '**' ;
 PLUS			: '+' ;
@@ -502,31 +425,4 @@ ATSIGN          : '@' ;
 CARET           : '^' ;
 
 BLOCK_DELETE	: '/';
-
-fragment A:('a'|'A');
-fragment B:('b'|'B');
-fragment C:('c'|'C');
-fragment D:('d'|'D');
-fragment E:('e'|'E');
-fragment F:('f'|'F');
-fragment G:('g'|'G');
-fragment H:('h'|'H');
-fragment I:('i'|'I');
-fragment J:('j'|'J');
-fragment K:('k'|'K');
-fragment L:('l'|'L');
-fragment M:('m'|'M');
-fragment N:('n'|'N');
-fragment O:('o'|'O');
-fragment P:('p'|'P');
-fragment Q:('q'|'Q');
-fragment R:('r'|'R');
-fragment S:('s'|'S');
-fragment T:('t'|'T');
-fragment U:('u'|'U');
-fragment V:('v'|'V');
-fragment W:('w'|'W');
-fragment X:('x'|'X');
-fragment Y:('y'|'Y');
-fragment Z:('z'|'Z');
 

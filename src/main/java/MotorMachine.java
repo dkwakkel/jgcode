@@ -1,5 +1,3 @@
-import static dkwakkel.jgcode.GCodeParser.convertUnit;
-import static dkwakkel.jgcode.GCodeParser.CANON_UNITS.CANON_UNITS_MM;
 import static java.lang.StrictMath.PI;
 import static java.lang.StrictMath.atan2;
 import static java.lang.StrictMath.ceil;
@@ -8,16 +6,42 @@ import static java.lang.StrictMath.max;
 import static java.lang.StrictMath.pow;
 import static java.lang.StrictMath.sin;
 import static java.lang.StrictMath.sqrt;
-import dkwakkel.jgcode.GCodeParser;
-import dkwakkel.jgcode.GCodeParser.CANON_COMP_SIDE;
-import dkwakkel.jgcode.GCodeParser.CANON_DIRECTION;
-import dkwakkel.jgcode.GCodeParser.CANON_FEED_REFERENCE;
-import dkwakkel.jgcode.GCodeParser.CANON_MOTION_MODE;
-import dkwakkel.jgcode.GCodeParser.CANON_PLANE;
-import dkwakkel.jgcode.GCodeParser.CANON_UNITS;
 
-public class MotorMachine implements GCodeParser.Machine
+import org.antlr.v4.runtime.ANTLRInputStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Lexer;
+import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
+
+import dkwakkel.jgcode.GCodeLexer;
+import dkwakkel.jgcode.GCodeParser;
+
+public class MotorMachine implements Machine
 {
+	// See Table 2. Default Parameter File
+	// TODO: Persistence
+	double[] parameters = new double[5400 + 1];
+	{
+		parameters[5220] = 1.0;
+	}
+
+	public static void execute(Machine machine, java.io.InputStream in) throws Exception {
+		ANTLRInputStream input = new ANTLRInputStream(in == null ? System.in : in);
+
+		Lexer lexer = new GCodeLexer(input);
+		TokenStream tokens = new CommonTokenStream(lexer);
+		GCodeParser parser = new GCodeParser(tokens);
+
+		ParseTreeWalker walker = new ParseTreeWalker();
+		walker.walk(new Executor(machine), parser.program());
+	}
+
+	private static double INCH_IN_MM = 25.4;
+
+	public static double convertUnit(CANON_UNITS from, CANON_UNITS to, double input) {
+		return from == to ? input : (to == CANON_UNITS.CANON_UNITS_MM ? input * INCH_IN_MM : input / INCH_IN_MM);
+	}
+
 	private CANON_PLANE						canonPlane	= CANON_PLANE.CANON_PLANE_XY;
 	private CANON_FEED_REFERENCE	feedReference;
 	private CANON_MOTION_MODE			motionControlMode;
@@ -64,14 +88,14 @@ public class MotorMachine implements GCodeParser.Machine
 		void setSpeed(double feedRateInUnitPerMinute) {
 			if (currentFeedRate != feedRateInUnitPerMinute) {
 				currentFeedRate = feedRateInUnitPerMinute;
-				double feedRateInMmPerMinute = convertUnit(units, CANON_UNITS_MM, feedRateInUnitPerMinute);
+				double feedRateInMmPerMinute = convertUnit(units, CANON_UNITS.CANON_UNITS_MM, feedRateInUnitPerMinute);
 				motor.setSpeed(feedRateInMmPerMinute);
 			}
 		}
 
 		public void moveTo(double value) {
 			if (value != currentValue) {
-				double valueInMM = convertUnit(units, CANON_UNITS_MM, value);
+				double valueInMM = convertUnit(units, CANON_UNITS.CANON_UNITS_MM, value);
 				motor.moveTo(valueInMM);
 				currentValue = value;
 			}
