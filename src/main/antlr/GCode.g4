@@ -43,10 +43,9 @@ fragment Z:('z'|'Z');
 
 fragment COMMENT_TEXT : ~(')')* ;
 
-
 program		: PERCENT END_OF_LINE ( line )* (PERCENT END_OF_LINE?) | ( line )* ;
 
-line		: ( BLOCK_DELETE )? ( LINE_NUMBER )? ( segment )* endOfLine ;
+line		: ( BLOCK_DELETE )? ( lineNumber )? ( segment )* endOfLine ;
 
 segment		: word | parameterSetting | comment | oword_label oword_statement;
 
@@ -84,7 +83,7 @@ parameterList	: bracketExpression*;
 
 optReturnValue	: bracketExpression | ;
 
-word	: axisWord | dimensionWord | gWord | mWord | WordLetter e;
+word	: gWord | mWord | axisWord | dimensionWord | wordLetter e;
 
 axisWord : a | b | c | i | j | k | r | x | y | z;
 a : ('a'|'A') e ; // A-axis of machine
@@ -96,23 +95,22 @@ k : ('k'|'K') e ; // Z-axis offset for arcs | 'z' offset in G87 canned cycle
 r : ('r'|'R') e ; // arc radius | canned cycle plane
 x : ('x'|'X') e ; // X-axis of machine
 y : ('y'|'Y') e ; // Y-axis of machine
-z : ('z'|'Z') e ; // Z-axis of machine
+z : ('z'|'Z') e ; // Z-axis of machines
 
 dimensionWord : f;
 f : ('f'|'F') e; // feedrate
 
-WordLetter: 
-	('d'|'D') | // tool radius compensation NUMBER
-	('g'|'G') | // general function (see Table 5)
-	('h'|'H') | // tool length offset index
-	('l'|'L') | // NUMBER of repetitions in canned cycles | key used with G10
-	('m'|'M') | // miscellaneous function (see Table 7)
-	('p'|'P') | // dwell time in canned cycles | dwell time with G4 | key used with G10
-	('q'|'Q') | // feed increment in G83 canned cycle
-	('s'|'S') | // spindle speed
-	('t'|'T') | // tool selection
-	ATSIGN |
-	CARET;
+d : ('d'|'D') ; // tool radius compensation NUMBER
+g : ('g'|'G') ; // general function (see Table 5)
+h : ('h'|'H') ; // tool length offset index
+l : ('l'|'L') ; // NUMBER of repetitions in canned cycles | key used with G10
+m : ('m'|'M') ; // miscellaneous function (see Table 7)
+p : ('p'|'P') ; // dwell time in canned cycles | dwell time with G4 | key used with G10
+q : ('q'|'Q') ; // feed increment in G83 canned cycle
+s : ('s'|'S') ; // spindle speed
+t : ('t'|'T') ; // tool selection
+
+wordLetter:  d | g | h | l | m | p | q | s | t | ATSIGN | CARET;
 
 //// Table 5: G codes /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -186,10 +184,10 @@ G94 : G '0'* '94' ;
 G98 : G '0'* '98' ;
 G99 : G '0'* '99' ;
 
-g0 : G0 x? y? z? a? b? c? ; // rapid positioning
-g1 : G1 x? y? z? a? b? c? ;  // linear interpolation
-g2 : G2 x? y? z? a? b? c? (r | i? j? k?) ; // circular/helical interpolation (clockwise)
-g3 : G3 x? y? z? a? b? c? (r | i? j? k?) ; // circular/helical interpolation (counterclockwise)
+g0 : G0  ; // rapid positioning
+g1 : G1 ;  // linear interpolation
+g2 : G2  ; // circular/helical interpolation (clockwise)
+g3 : G3  ; // circular/helical interpolation (counterclockwise)
 g4 : G4 ; // dwell
 g10 : G10 ; // coordinate system origin setting
 g17 : G17 ; // XY-plane selection
@@ -285,7 +283,7 @@ m60 : M60 ; // pallet shuttle and program stop
 e returns [double v]: logicalExpression { $v = $logicalExpression.v; };
 
 logicalExpression returns [double v]:
-				comparisonExpression (
+				comparisonExpression { $v = $comparisonExpression.v;} (
 					( OR comparisonExpression ) |
 					( XOR comparisonExpression ) |
 					( AND comparisonExpression )
@@ -293,7 +291,7 @@ logicalExpression returns [double v]:
 				;
 
 comparisonExpression returns [double v]:
-				plusMinExpression (
+				plusMinExpression { $v = $plusMinExpression.v;} (
 					( EQ plusMinExpression ) |
 					( NE plusMinExpression ) |
 					( GT plusMinExpression ) |
@@ -303,13 +301,13 @@ comparisonExpression returns [double v]:
 				)* ;
 
 plusMinExpression returns [double v]:
-				aggregateExpression (
+				aggregateExpression { $v = $aggregateExpression.v;} (
 					( PLUS aggregateExpression ) |
 					( MINUS aggregateExpression )
 				)* ;
 
 aggregateExpression returns [double v]:
-				powerExpression (
+				powerExpression { $v = $powerExpression.v;} (
 					( TIMES powerExpression ) |
 					( SLASH powerExpression ) |
 					( MOD powerExpression )
@@ -342,7 +340,7 @@ unaryExpression returns [double v]:
 	| EXISTS bracketExpression	
 	| ATAN bracketExpression SLASH bracketExpression
 	| parameter
-	| primitiveExpression
+	| primitiveExpression { $v = $primitiveExpression.v;}
 ;
 
 bracketExpression returns [double v]:	LBRACKET e RBRACKET { $v = $e.v; };
@@ -353,9 +351,11 @@ primitiveExpression returns [double v]:
 	| NUMBER { $v = Double.valueOf($NUMBER.text); }
 ; 
 
+lineNumber : LINE_NUMBER ; 
+
 endOfLine : ';' END_OF_LINE | END_OF_LINE ;
 
-WHITESPACE : ( ' ' | '\t' )+ -> channel(HIDDEN);
+WHITESPACE : ( ' ' | '\t' )+ -> channel(HIDDEN) ;
 
 LINE_NUMBER	: N Digit Digit? Digit? Digit? Digit? ;
 

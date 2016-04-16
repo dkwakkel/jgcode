@@ -12,6 +12,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 
 import dkwakkel.jgcode.GCodeBaseListener;
 import dkwakkel.jgcode.GCodeParser.AContext;
+import dkwakkel.jgcode.GCodeParser.AxisWordContext;
 import dkwakkel.jgcode.GCodeParser.BContext;
 import dkwakkel.jgcode.GCodeParser.CContext;
 import dkwakkel.jgcode.GCodeParser.EndOfLineContext;
@@ -33,7 +34,9 @@ import dkwakkel.jgcode.GCodeParser.ZContext;
 
 class Executor extends GCodeBaseListener
 {
-	private final Machine machine;
+	// https://github.com/nraynaud/webgcode/blob/gh-pages/webapp/cnc/gcode/parser.js
+
+	private final Machine	machine;
 
 	String								messageComment;
 
@@ -121,6 +124,11 @@ class Executor extends GCodeBaseListener
 	}
 
 	@Override
+	public void exitAxisWord(AxisWordContext ctx) {
+		radiusFormat = ctx.r() != null;
+	}
+
+	@Override
 	public void exitG0(G0Context ctx) {
 		group1Value = 0;
 	}
@@ -133,13 +141,11 @@ class Executor extends GCodeBaseListener
 	@Override
 	public void exitG2(G2Context ctx) {
 		group1Value = 2;
-		radiusFormat = ctx.r() != null;
 	}
 
 	@Override
 	public void exitG3(G3Context ctx) {
 		group1Value = 3;
-		radiusFormat = ctx.r() != null;
 	}
 
 	@Override
